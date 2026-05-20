@@ -1,0 +1,8 @@
+/vendor/
+/.idea/
+.phpunit.result.cache
+/.phpunit.cache/
+/data/normalized/*
+!/data/normalized/.gitkeep
+.DS_Store
+Thumbs.db
