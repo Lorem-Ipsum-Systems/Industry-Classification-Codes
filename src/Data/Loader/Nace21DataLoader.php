@@ -23,7 +23,7 @@ final class Nace21DataLoader
         $system = 'NACE';
         $version = '2.1';
 
-        $codesData = [];
+        $rawCodes = [];
 
         // 1. Load Structure and Explanatory Notes
         foreach ($this->reader->read($basePath . '/' . $files['structure']) as $row) {
@@ -52,7 +52,37 @@ final class Nace21DataLoader
                 default => 'unknown',
             };
 
-            $codesData[$code] = true;
+            $rawCodes[$code] = [
+                'code' => $code,
+                'title' => $this->textNormalizer->normalize($row['title'] ?? '') ?? '',
+                'description' => $description,
+                'level' => $level,
+                'level_name' => $levelName,
+                'parent_code' => (string)($row['parent_code'] ?? '') ?: null,
+                'is_selectable' => true,
+                'includes' => $includes,
+                'includes_also' => $includesAlso,
+                'excludes' => $excludes,
+                'implementation_rule' => $implementationRule,
+                'source_file' => $row['source_file'],
+            ];
+        }
+
+        // 2. Compute isLeaf
+        $hasChildren = [];
+        foreach ($rawCodes as $code => $data) {
+            if ($data['parent_code'] !== null) {
+                $hasChildren[$data['parent_code']] = true;
+            }
+        }
+
+        // 3. Hydrate and add to DataSet
+        foreach ($rawCodes as $code => $data) {
+            $code = (string)$code;
+            $parentCode = $data['parent_code'];
+            if ($parentCode !== null && !isset($rawCodes[$parentCode])) {
+                $parentCode = null;
+            }
 
             $model = new ClassificationIndustryCode(
                 $system,
@@ -60,33 +90,33 @@ final class Nace21DataLoader
                 $code,
                 $code,
                 [],
-                $this->textNormalizer->normalize($row['title'] ?? '') ?? '',
-                $description,
-                $level,
-                $levelName,
-                $level,
-                (string)($row['parent_code'] ?? '') ?: null,
-                $levelName,
-                (bool)($row['is_leaf'] ?? false), // We might need to re-evaluate this after loading all codes if we want to be strict
-                (bool)($row['is_selectable'] ?? true),
+                $data['title'],
+                $data['description'],
+                $data['level'],
+                $data['level_name'],
+                $data['level'],
+                $parentCode,
+                $data['level_name'],
+                !isset($hasChildren[$code]),
+                $data['is_selectable'],
                 true,
                 null,
                 null,
                 null,
-                $includes,
-                $includesAlso,
-                $excludes,
-                $implementationRule,
-                [$row['source_file']]
+                $data['includes'],
+                $data['includes_also'],
+                $data['excludes'],
+                $data['implementation_rule'],
+                [$data['source_file']]
             );
             $dataSet->addCode($model);
         }
 
-        // 2. Load Translations
+        // 4. Load Translations
         if (isset($files['headings_all_languages'])) {
             foreach ($this->reader->read($basePath . '/' . $files['headings_all_languages']) as $row) {
                 $code = (string)$row['code'];
-                if (isset($codesData[$code])) {
+                if (isset($rawCodes[$code])) {
                     $dataSet->addTranslation(new ClassificationIndustryTranslation(
                         $system,
                         $version,

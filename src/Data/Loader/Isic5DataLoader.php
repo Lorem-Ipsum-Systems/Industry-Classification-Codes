@@ -22,27 +22,35 @@ final class Isic5DataLoader
         $system = 'ISIC';
         $version = '5';
 
-        $codesData = [];
+        $rawCodes = [];
 
         // 1. Load basic structure
         foreach ($this->reader->read($basePath . '/' . $files['structure']) as $row) {
             $code = (string)$row['code'];
             $normalizedCode = $this->normalizeIsicCode($code);
-            $codesData[$normalizedCode] = [
-                'code' => $code,
+            $parentCode = (string)($row['parent_code'] ?? '') ?: null;
+            if ($parentCode !== null) {
+                $parentCode = $this->normalizeIsicCode($parentCode);
+            }
+
+            $rawCodes[$normalizedCode] = [
+                'code' => $code, // Canonical public code from structure
                 'normalized_code' => $normalizedCode,
                 'aliases' => [],
                 'title' => $this->textNormalizer->normalize($row['title'] ?? '') ?? '',
                 'level' => $row['level'],
-                'parent_code' => (string)($row['parent_code'] ?? '') ?: null,
-                'is_leaf' => (bool)($row['is_leaf'] ?? false),
-                'is_selectable' => (bool)($row['is_selectable'] ?? true),
+                'parent_code' => $parentCode,
+                'is_selectable' => true,
                 'source_files' => [$row['source_file']],
                 'introductory_text' => null,
                 'includes' => null,
                 'includes_also' => null,
                 'excludes' => null,
             ];
+
+            if ($code !== $normalizedCode) {
+                $rawCodes[$normalizedCode]['aliases'][] = $code;
+            }
         }
 
         // 2. Load and merge explanatory notes
@@ -51,17 +59,35 @@ final class Isic5DataLoader
                 $code = (string)$row['code'];
                 $normalizedCode = $this->normalizeIsicCode($code);
 
-                if (!isset($codesData[$normalizedCode])) {
-                    // If not in structure, we might still want it if it's a valid code
-                    // but according to requirements, structure defines the universe.
-                    // However, ISIC notes might have "A01" while structure has "01".
+                if (!isset($rawCodes[$normalizedCode])) {
+                    // Structure defines the universe, but we might want to repair missing ones if needed.
+                    // For now, follow the requirement that structure defines the valid codes.
                     continue;
                 }
 
-                $record = &$codesData[$normalizedCode];
+                $record = &$rawCodes[$normalizedCode];
 
                 if ($code !== $record['code'] && !in_array($code, $record['aliases'], true)) {
                     $record['aliases'][] = $code;
+                }
+
+                // Repair/enrich from notes if needed
+                $notesParentCode = (string)($row['parent_code'] ?? '') ?: null;
+                if ($notesParentCode !== null) {
+                    $notesParentCode = $this->normalizeIsicCode($notesParentCode);
+                }
+
+                if ($record['parent_code'] === null && $notesParentCode !== null) {
+                    $record['parent_code'] = $notesParentCode;
+                }
+
+                if (isset($row['level']) && ($record['level'] === null || $record['level'] === '')) {
+                    $record['level'] = $row['level'];
+                }
+
+                // If structure had missing info, use notes info
+                if (!$record['title'] && isset($row['title'])) {
+                    $record['title'] = $this->textNormalizer->normalize($row['title']);
                 }
 
                 $record['introductory_text'] = $this->textNormalizer->normalize($row['introductory_text'] ?? null);
@@ -75,10 +101,23 @@ final class Isic5DataLoader
             }
         }
 
-        // 3. Hydrate
-        foreach ($codesData as $data) {
+        // 3. Compute isLeaf
+        $hasChildren = [];
+        foreach ($rawCodes as $code => $data) {
+            if ($data['parent_code'] !== null) {
+                $hasChildren[$data['parent_code']] = true;
+            }
+        }
+
+        // 4. Hydrate and add to DataSet
+        foreach ($rawCodes as $normalizedCode => $data) {
             $levelName = $this->getIsicLevelName($data['level']);
             $depth = $this->getIsicDepth($levelName);
+
+            $parentCode = $data['parent_code'];
+            if ($parentCode !== null && !isset($rawCodes[$parentCode])) {
+                $parentCode = null;
+            }
 
             $descriptionParts = [];
             if ($data['introductory_text']) { $descriptionParts[] = $data['introductory_text']; }
@@ -98,11 +137,11 @@ final class Isic5DataLoader
                 $data['level'],
                 $levelName,
                 $depth,
-                $data['parent_code'],
+                $parentCode,
                 $levelName,
-                $data['is_leaf'],
-                $data['is_selectable'],
-                true,
+                !isset($hasChildren[$normalizedCode]),
+                true, // isSelectable
+                true, // isActive
                 null,
                 null,
                 $data['introductory_text'],

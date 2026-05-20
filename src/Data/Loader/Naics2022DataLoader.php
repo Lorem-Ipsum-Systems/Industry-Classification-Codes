@@ -23,18 +23,35 @@ final class Naics2022DataLoader
         $system = 'NAICS';
         $version = '2022';
 
-        $codesData = [];
+        $rawCodes = [];
 
         // 1. Load Structure
         foreach ($this->reader->read($basePath . '/' . $files['structure']) as $row) {
             $code = (string)$row['code'];
-            $codesData[$code] = [
+            $parentCode = (string)($row['parent_code'] ?? '') ?: null;
+
+            // Range-sector repair
+            if (in_array($code, ['31-33', '44-45', '48-49'], true)) {
+                $parentCode = null;
+            } elseif (in_array($parentCode, ['31-3', '44-4', '48-4'], true)) {
+                $parentCode = null;
+            }
+
+            if ($parentCode === '31' || $parentCode === '32' || $parentCode === '33') {
+                $parentCode = '31-33';
+            } elseif ($parentCode === '44' || $parentCode === '45') {
+                $parentCode = '44-45';
+            } elseif ($parentCode === '48' || $parentCode === '49') {
+                $parentCode = '48-49';
+            }
+
+            $rawCodes[$code] = [
                 'code' => $code,
                 'title' => $this->textNormalizer->normalize($row['title'], true),
                 'level' => $row['level'],
-                'parent_code' => (string)($row['parent_code'] ?? '') ?: null,
-                'is_leaf' => (bool)$row['is_leaf'],
-                'is_selectable' => (bool)$row['is_selectable'],
+                'parent_code' => $parentCode,
+                'is_leaf' => false, // Will compute later
+                'is_selectable' => true, // All valid codes are selectable in v1
                 'change_indicator' => (string)($row['change_indicator'] ?? '') ?: null,
                 'source_files' => [$row['source_file']],
                 'description' => null,
@@ -46,10 +63,10 @@ final class Naics2022DataLoader
         if (isset($files['descriptions'])) {
             foreach ($this->reader->read($basePath . '/' . $files['descriptions']) as $row) {
                 $code = (string)$row['code'];
-                if (isset($codesData[$code])) {
-                    $codesData[$code]['description'] = $this->textNormalizer->normalize($row['description']);
-                    if (!in_array($row['source_file'], $codesData[$code]['source_files'], true)) {
-                        $codesData[$code]['source_files'][] = $row['source_file'];
+                if (isset($rawCodes[$code])) {
+                    $rawCodes[$code]['description'] = $this->textNormalizer->normalize($row['description']);
+                    if (!in_array($row['source_file'], $rawCodes[$code]['source_files'], true)) {
+                        $rawCodes[$code]['source_files'][] = $row['source_file'];
                     }
                 }
             }
@@ -59,20 +76,37 @@ final class Naics2022DataLoader
         if (isset($files['six_digit_codes'])) {
             foreach ($this->reader->read($basePath . '/' . $files['six_digit_codes']) as $row) {
                 $code = (string)$row['code'];
-                if (isset($codesData[$code])) {
-                    $codesData[$code]['variant'] = $row['variant'] ?? null;
-                    if (!in_array($row['source_file'], $codesData[$code]['source_files'], true)) {
-                        $codesData[$code]['source_files'][] = $row['source_file'];
+                if (isset($rawCodes[$code])) {
+                    $rawCodes[$code]['variant'] = $row['variant'] ?? null;
+                    if (!in_array($row['source_file'], $rawCodes[$code]['source_files'], true)) {
+                        $rawCodes[$code]['source_files'][] = $row['source_file'];
                     }
                 }
             }
         }
 
-        // 4. Hydrate Codes
-        foreach ($codesData as $code => $data) {
+        // 4. Compute isLeaf
+        $hasChildren = [];
+        foreach ($rawCodes as $code => $data) {
+            if ($data['parent_code'] !== null) {
+                $hasChildren[$data['parent_code']] = true;
+            }
+        }
+        foreach ($rawCodes as $code => &$data) {
+            $data['is_leaf'] = !isset($hasChildren[$code]);
+        }
+        unset($data);
+
+        // 5. Hydrate and add to DataSet
+        foreach ($rawCodes as $code => $data) {
             $code = (string)$code;
             $levelName = $this->getNaicsLevelName($code);
             $depth = $this->getNaicsDepth($code);
+
+            $parentCode = $data['parent_code'];
+            if ($parentCode !== null && !isset($rawCodes[$parentCode])) {
+                $parentCode = null;
+            }
 
             $model = new ClassificationIndustryCode(
                 $system,
@@ -85,7 +119,7 @@ final class Naics2022DataLoader
                 $data['level'],
                 $levelName,
                 $depth,
-                $data['parent_code'],
+                $parentCode,
                 $levelName,
                 $data['is_leaf'],
                 $data['is_selectable'],
@@ -102,7 +136,7 @@ final class Naics2022DataLoader
             $dataSet->addCode($model);
         }
 
-        // 5. Load Index Terms (Search Terms)
+        // 6. Load Index Terms (Search Terms)
         if (isset($files['index'])) {
             foreach ($this->reader->read($basePath . '/' . $files['index']) as $row) {
                 $code = (string)$row['code'];
@@ -110,7 +144,7 @@ final class Naics2022DataLoader
                     continue;
                 }
 
-                if (isset($codesData[$code])) {
+                if (isset($rawCodes[$code])) {
                     $term = $this->textNormalizer->normalize($row['search_term']);
                     if ($term) {
                         $dataSet->addSearchTerm(new ClassificationIndustrySearchTerm(

@@ -22,6 +22,7 @@ final class UkSic2026DataLoader
         $system = 'UK_SIC';
         $version = '2026';
 
+        $rawCodes = [];
         $lastSectionCode = null;
 
         foreach ($this->reader->read($basePath . '/' . $files['classification']) as $row) {
@@ -57,30 +58,61 @@ final class UkSic2026DataLoader
             if ($excludes) { $descriptionParts[] = "Excludes: " . $excludes; }
             $description = $descriptionParts ? implode("\n\n", $descriptionParts) : null;
 
+            $rawCodes[$code] = [
+                'code' => $code,
+                'title' => $this->textNormalizer->normalize($row['title'] ?? '') ?? '',
+                'description' => $description,
+                'level' => $row['level'],
+                'level_name' => $levelName,
+                'depth' => $depth,
+                'parent_code' => $parentCode,
+                'includes' => $includes,
+                'includes_also' => $includesAlso,
+                'excludes' => $excludes,
+                'source_file' => $row['source_file'],
+            ];
+        }
+
+        // Compute isLeaf
+        $hasChildren = [];
+        foreach ($rawCodes as $code => $data) {
+            if ($data['parent_code'] !== null) {
+                $hasChildren[$data['parent_code']] = true;
+            }
+        }
+
+        // Hydrate and add to DataSet
+        foreach ($rawCodes as $code => $data) {
+            $code = (string)$code;
+            $parentCode = $data['parent_code'];
+            if ($parentCode !== null && !isset($rawCodes[$parentCode])) {
+                $parentCode = null;
+            }
+
             $model = new ClassificationIndustryCode(
                 $system,
                 $version,
                 $code,
                 $code,
                 [],
-                $this->textNormalizer->normalize($row['title'] ?? '') ?? '',
-                $description,
-                $row['level'],
-                $levelName,
-                $depth,
+                $data['title'],
+                $data['description'],
+                $data['level'],
+                $data['level_name'],
+                $data['depth'],
                 $parentCode,
-                $levelName,
-                (bool)($row['is_leaf'] ?? false),
-                (bool)($row['is_selectable'] ?? true),
-                true,
+                $data['level_name'],
+                !isset($hasChildren[$code]),
+                true, // isSelectable
+                true, // isActive
                 null,
                 null,
                 null,
-                $includes,
-                $includesAlso,
-                $excludes,
+                $data['includes'],
+                $data['includes_also'],
+                $data['excludes'],
                 null,
-                [$row['source_file']]
+                [$data['source_file']]
             );
             $dataSet->addCode($model);
         }
