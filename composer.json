@@ -27,5 +27,8 @@
     "config": {
         "sort-packages": true
     },
+    "scripts": {
+        "validate-data": "php tools/validate-data.php"
+    },
     "minimum-stability": "stable"
 }

@@ -16,12 +16,12 @@ composer require loremipsum-system/industry-classification-codes
 
 ## Data Setup
 
-This package uses NDJSON files for reference data. You must provide the source files in `data/source/`.
+This package uses NDJSON files for reference data. You must provide the data files in `data/`.
 
 Expected structure:
 
 ```text
-data/source/
+data/
   naics/2022/
     2022_NAICS_Structure.ndjson
     2022_NAICS_Descriptions.ndjson
@@ -37,13 +37,11 @@ data/source/
     ISIC5_Exp_Notes_11Mar2024.ndjson
 ```
 
-After placing the files, run the normalization tool:
+You can validate your data files using the following command:
 
 ```bash
-php tools/normalize.php
+composer validate-data
 ```
-
-This will generate optimized runtime files in `data/normalized/`.
 
 ## Usage
 
@@ -51,9 +49,13 @@ This will generate optimized runtime files in `data/normalized/`.
 
 ```php
 use LoremIpsum\IndustryClassificationCodes\ClassificationIndustryRegistry;
-use LoremIpsum\IndustryClassificationCodes\Repositories\NdjsonClassificationIndustryRepository;
+use LoremIpsum\IndustryClassificationCodes\Data\ShippedClassificationIndustryDataLoader;
+use LoremIpsum\IndustryClassificationCodes\Repositories\InMemoryClassificationIndustryRepository;
 
-$repository = new NdjsonClassificationIndustryRepository(__DIR__ . '/data/normalized');
+$loader = new ShippedClassificationIndustryDataLoader(__DIR__ . '/data');
+$dataSet = $loader->load();
+
+$repository = new InMemoryClassificationIndustryRepository($dataSet);
 $registry = new ClassificationIndustryRegistry($repository);
 ```
 

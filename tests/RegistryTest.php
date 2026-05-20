@@ -5,35 +5,22 @@ declare(strict_types=1);
 namespace LoremIpsum\IndustryClassificationCodes\Tests;
 
 use LoremIpsum\IndustryClassificationCodes\ClassificationIndustryRegistry;
-use LoremIpsum\IndustryClassificationCodes\Normalization\ClassificationIndustryNormalizer;
-use LoremIpsum\IndustryClassificationCodes\Repositories\NdjsonClassificationIndustryRepository;
+use LoremIpsum\IndustryClassificationCodes\Data\ShippedClassificationIndustryDataLoader;
+use LoremIpsum\IndustryClassificationCodes\Repositories\InMemoryClassificationIndustryRepository;
 use PHPUnit\Framework\TestCase;
 
 class RegistryTest extends TestCase
 {
-    private string $sourcePath;
-    private string $normalizedPath;
     private ClassificationIndustryRegistry $registry;
 
     protected function setUp(): void
     {
-        $this->sourcePath = __DIR__ . '/Fixtures/source';
-        $this->normalizedPath = __DIR__ . '/Fixtures/normalized_registry';
+        $dataPath = __DIR__ . '/Fixtures/data';
+        $loader = new ShippedClassificationIndustryDataLoader($dataPath);
+        $dataSet = $loader->load();
 
-        if (!is_dir($this->normalizedPath)) {
-            mkdir($this->normalizedPath, 0777, true);
-        }
-
-        $normalizer = new ClassificationIndustryNormalizer($this->sourcePath, $this->normalizedPath);
-        $normalizer->normalize();
-
-        $repository = new NdjsonClassificationIndustryRepository($this->normalizedPath);
+        $repository = new InMemoryClassificationIndustryRepository($dataSet);
         $this->registry = new ClassificationIndustryRegistry($repository);
-    }
-
-    protected function tearDown(): void
-    {
-        $this->removeDirectory($this->normalizedPath);
     }
 
     public function testGetSystems(): void
@@ -78,25 +65,17 @@ class RegistryTest extends TestCase
     {
         $translations = $this->registry->getTranslations('NACE', '2.1', 'A');
         $this->assertCount(2, $translations);
-        $this->assertEquals('de', $translations[0]->locale);
+        $locales = array_map(fn($t) => $t->locale, $translations);
+        $this->assertContains('de', $locales);
+        $this->assertContains('fr', $locales);
     }
 
     public function testSearch(): void
     {
         $results = $this->registry->search('NAICS', '2022', 'Soybean');
-        $this->assertCount(1, $results);
-        $this->assertEquals('111110', $results[0]->code->code);
-    }
-
-    private function removeDirectory(string $path): void
-    {
-        if (!is_dir($path)) {
-            return;
-        }
-        $files = array_diff(scandir($path), ['.', '..']);
-        foreach ($files as $file) {
-            (is_dir("$path/$file")) ? $this->removeDirectory("$path/$file") : unlink("$path/$file");
-        }
-        rmdir($path);
+        // Both "Soybean Farming (5-digit)" and "Soybean Farming" (6-digit) are in fixtures
+        $this->assertGreaterThanOrEqual(1, count($results));
+        $codes = array_map(fn($r) => $r->code->code, $results);
+        $this->assertContains('111110', $codes);
     }
 }

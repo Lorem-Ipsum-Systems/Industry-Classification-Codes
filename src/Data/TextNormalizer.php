@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace LoremIpsum\IndustryClassificationCodes\Normalization;
+namespace LoremIpsum\IndustryClassificationCodes\Data;
 
-class TextNormalizer
+final class TextNormalizer
 {
     /**
      * Normalizes text according to the package requirements.
