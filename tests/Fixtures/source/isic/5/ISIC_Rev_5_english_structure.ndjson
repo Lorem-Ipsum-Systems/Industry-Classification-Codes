@@ -1,0 +1,2 @@
+{"code": "A", "description": "Agriculture, forestry and fishing", "parent": null}
+{"code": "01", "description": "Crop and animal production, hunting and related service activities", "parent": "A"}
