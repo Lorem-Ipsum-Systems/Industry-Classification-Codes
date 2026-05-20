@@ -97,6 +97,11 @@ final class ClassificationIndustryDataSet
         return array_values($this->translations[$system][$version][$code] ?? []);
     }
 
+    public function getTranslation(string $system, string $version, string $code, string $locale): ?ClassificationIndustryTranslation
+    {
+        return $this->translations[$system][$version][$code][$locale] ?? null;
+    }
+
     /**
      * @return ClassificationIndustrySearchTerm[]
      */
