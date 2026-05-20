@@ -45,6 +45,11 @@ final class Naics2022DataLoader
                 $parentCode = '48-49';
             }
 
+            $changeIndicator = (string)($row['change_indicator'] ?? '');
+            if ($changeIndicator === '') {
+                $changeIndicator = null;
+            }
+
             $rawCodes[$code] = [
                 'code' => $code,
                 'title' => $this->textNormalizer->normalize($row['title'], true),
@@ -52,7 +57,7 @@ final class Naics2022DataLoader
                 'parent_code' => $parentCode,
                 'is_leaf' => false, // Will compute later
                 'is_selectable' => true, // All valid codes are selectable in v1
-                'change_indicator' => (string)($row['change_indicator'] ?? '') ?: null,
+                'change_indicator' => $changeIndicator,
                 'source_files' => [$row['source_file']],
                 'description' => null,
                 'variant' => null,

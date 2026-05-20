@@ -52,13 +52,18 @@ final class Nace21DataLoader
                 default => 'unknown',
             };
 
+            $parentCode = (string)($row['parent_code'] ?? '');
+            if ($parentCode === '') {
+                $parentCode = null;
+            }
+
             $rawCodes[$code] = [
                 'code' => $code,
                 'title' => $this->textNormalizer->normalize($row['title'] ?? '') ?? '',
                 'description' => $description,
                 'level' => $level,
                 'level_name' => $levelName,
-                'parent_code' => (string)($row['parent_code'] ?? '') ?: null,
+                'parent_code' => $parentCode,
                 'is_selectable' => true,
                 'includes' => $includes,
                 'includes_also' => $includesAlso,

@@ -14,10 +14,22 @@ final class ShippedClassificationIndustryDataValidator
     /** @var string[] */
     private array $warnings = [];
 
+    /** @var array<string, array<string, array<string, bool>>> */
+    private array $seenCodes = [];
+
+    /** @var array<string, array<string, array<string, array<string, bool>>>> */
+    private array $seenTranslations = [];
+
+    /** @var array<string, array<string, array<string, string>>> */
+    private array $seenAliases = [];
+
     public function validate(string $dataRootPath): void
     {
         $this->errors = [];
         $this->warnings = [];
+        $this->seenCodes = [];
+        $this->seenTranslations = [];
+        $this->seenAliases = [];
 
         $manifest = ClassificationIndustryDataManifest::getSystems();
         $reader = new NdjsonReader();
@@ -77,6 +89,26 @@ final class ShippedClassificationIndustryDataValidator
 
         if (!isset($row['code'])) {
             $this->errors[] = sprintf('Missing "code" in %s line %d', $filePath, $line);
+            return;
+        }
+
+        $code = (string)$row['code'];
+
+        // Duplicate detection for primary structure files
+        if (in_array($fileRole, ['structure', 'classification'], true)) {
+            if (isset($this->seenCodes[$expectedSystem][$expectedVersion][$code])) {
+                $this->errors[] = sprintf('Duplicate canonical code "%s" in %s line %d', $code, $filePath, $line);
+            }
+            $this->seenCodes[$expectedSystem][$expectedVersion][$code] = true;
+        }
+
+        // Translation duplicate detection
+        if ($fileRole === 'headings_all_languages') {
+            $locale = $row['locale'] ?? 'unknown';
+            if (isset($this->seenTranslations[$expectedSystem][$expectedVersion][$code][$locale])) {
+                $this->errors[] = sprintf('Duplicate translation for code "%s" locale "%s" in %s line %d', $code, $locale, $filePath, $line);
+            }
+            $this->seenTranslations[$expectedSystem][$expectedVersion][$code][$locale] = true;
         }
     }
 

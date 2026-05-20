@@ -28,14 +28,17 @@ final class UkSic2026DataLoader
         foreach ($this->reader->read($basePath . '/' . $files['classification']) as $row) {
             $code = (string)$row['code'];
             $levelName = (string)$row['level'];
-            $parentCode = (string)($row['parent_code'] ?? '') ?: null;
+            $parentCode = (string)($row['parent_code'] ?? '');
+            if ($parentCode === '') {
+                $parentCode = null;
+            }
 
-            if ($levelName === 'section') {
+            if ($levelName === 'section' || $row['level'] === 1) {
                 $lastSectionCode = $code;
             }
 
             // Repair division parent_code
-            if ($levelName === 'division' && $parentCode !== null && is_numeric($parentCode)) {
+            if (($levelName === 'division' || $row['level'] === 2) && $parentCode !== null && is_numeric($parentCode)) {
                 $parentCode = $lastSectionCode;
             }
 

@@ -3,3 +3,5 @@
 {"system": "NAICS", "version": "2022", "code": "1111", "title": "Oilseed and Grain Farming", "level": 3, "parent_code": "111", "is_leaf": false, "is_selectable": true, "change_indicator": "0", "source_file": "2022_NAICS_Structure.xlsx"}
 {"system": "NAICS", "version": "2022", "code": "11111", "title": "Soybean Farming (5-digit)", "level": 4, "parent_code": "1111", "is_leaf": false, "is_selectable": true, "change_indicator": "0", "source_file": "2022_NAICS_Structure.xlsx"}
 {"system": "NAICS", "version": "2022", "code": "111110", "title": "Soybean Farming", "level": 5, "parent_code": "11111", "is_leaf": true, "is_selectable": true, "change_indicator": "0", "source_file": "2022_NAICS_Structure.xlsx"}
+{"system": "NAICS", "version": "2022", "code": "31-33", "title": "Manufacturing T", "level": 1, "parent_code": "31-3", "is_leaf": false, "is_selectable": true, "change_indicator": "0", "source_file": "2022_NAICS_Structure.xlsx"}
+{"system": "NAICS", "version": "2022", "code": "311", "title": "Food Manufacturing", "level": 2, "parent_code": "31", "is_leaf": false, "is_selectable": true, "change_indicator": "0", "source_file": "2022_NAICS_Structure.xlsx"}

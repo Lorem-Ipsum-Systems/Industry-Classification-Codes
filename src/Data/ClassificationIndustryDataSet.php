@@ -45,9 +45,16 @@ final class ClassificationIndustryDataSet
 
     public function addCode(ClassificationIndustryCode $code): void
     {
+        if (isset($this->codes[$code->system][$code->version][$code->code])) {
+            throw new \RuntimeException(sprintf('Duplicate canonical code "%s" for %s %s', $code->code, $code->system, $code->version));
+        }
+
         $this->codes[$code->system][$code->version][$code->code] = $code;
 
         foreach ($code->aliases as $alias) {
+            if (isset($this->aliases[$code->system][$code->version][$alias]) && $this->aliases[$code->system][$code->version][$alias] !== $code->code) {
+                throw new \RuntimeException(sprintf('Alias conflict: "%s" is already assigned to "%s", cannot assign to "%s"', $alias, $this->aliases[$code->system][$code->version][$alias], $code->code));
+            }
             $this->aliases[$code->system][$code->version][$alias] = $code->code;
         }
 
@@ -57,6 +64,9 @@ final class ClassificationIndustryDataSet
 
     public function addTranslation(ClassificationIndustryTranslation $translation): void
     {
+        if (isset($this->translations[$translation->system][$translation->version][$translation->code][$translation->locale])) {
+            throw new \RuntimeException(sprintf('Duplicate translation for code "%s" locale "%s"', $translation->code, $translation->locale));
+        }
         $this->translations[$translation->system][$translation->version][$translation->code][$translation->locale] = $translation;
     }
 

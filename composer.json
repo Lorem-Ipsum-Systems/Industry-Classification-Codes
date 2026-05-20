@@ -28,6 +28,7 @@
         "sort-packages": true
     },
     "scripts": {
+        "test": "phpunit",
         "validate-data": "php tools/validate-data.php"
     },
     "minimum-stability": "stable"

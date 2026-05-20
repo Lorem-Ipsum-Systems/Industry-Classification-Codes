@@ -28,9 +28,11 @@ final class Isic5DataLoader
         foreach ($this->reader->read($basePath . '/' . $files['structure']) as $row) {
             $code = (string)$row['code'];
             $normalizedCode = $this->normalizeIsicCode($code);
-            $parentCode = (string)($row['parent_code'] ?? '') ?: null;
-            if ($parentCode !== null) {
+            $parentCode = (string)($row['parent_code'] ?? '');
+            if ($parentCode !== '') {
                 $parentCode = $this->normalizeIsicCode($parentCode);
+            } else {
+                $parentCode = null;
             }
 
             $rawCodes[$normalizedCode] = [
@@ -72,9 +74,11 @@ final class Isic5DataLoader
                 }
 
                 // Repair/enrich from notes if needed
-                $notesParentCode = (string)($row['parent_code'] ?? '') ?: null;
-                if ($notesParentCode !== null) {
+                $notesParentCode = (string)($row['parent_code'] ?? '');
+                if ($notesParentCode !== '') {
                     $notesParentCode = $this->normalizeIsicCode($notesParentCode);
+                } else {
+                    $notesParentCode = null;
                 }
 
                 if ($record['parent_code'] === null && $notesParentCode !== null) {
