@@ -19,7 +19,7 @@ class RegistryTest extends TestCase
     {
         $this->sourcePath = __DIR__ . '/Fixtures/source';
         $this->normalizedPath = __DIR__ . '/Fixtures/normalized_registry';
-        
+
         if (!is_dir($this->normalizedPath)) {
             mkdir($this->normalizedPath, 0777, true);
         }
@@ -41,14 +41,24 @@ class RegistryTest extends TestCase
         $systems = $this->registry->getSystems();
         $this->assertCount(4, $systems);
         $this->assertEquals('NAICS', $systems[0]->key);
+        $this->assertEquals('US', $systems[0]->region);
     }
 
     public function testFindCode(): void
     {
         $code = $this->registry->findCode('NAICS', '2022', '11');
         $this->assertNotNull($code);
-        $this->assertEquals('Agriculture, Forestry, Fishing and Hunting', $code->name);
+        $this->assertEquals('Agriculture, Forestry, Fishing and Hunting', $code->title);
         $this->assertStringContainsString('The Agriculture, Forestry, Fishing and Hunting sector', $code->description);
+    }
+
+    public function testFindCodeWithAlias(): void
+    {
+        // ISIC code A0111 is an alias for 0111
+        $code = $this->registry->findCode('ISIC', '5', 'A0111');
+        $this->assertNotNull($code);
+        $this->assertEquals('0111', $code->code);
+        $this->assertEquals('Growing of cereals (except rice), leguminous crops and oil seeds', $code->title);
     }
 
     public function testGetChildren(): void
@@ -68,7 +78,7 @@ class RegistryTest extends TestCase
     {
         $translations = $this->registry->getTranslations('NACE', '2.1', 'A');
         $this->assertCount(2, $translations);
-        $this->assertEquals('fr', $translations[0]->language);
+        $this->assertEquals('de', $translations[0]->locale);
     }
 
     public function testSearch(): void

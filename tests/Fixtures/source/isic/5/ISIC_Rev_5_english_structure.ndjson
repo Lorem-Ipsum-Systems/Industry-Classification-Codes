@@ -1,2 +1,4 @@
-{"code": "A", "description": "Agriculture, forestry and fishing", "parent": null}
-{"code": "01", "description": "Crop and animal production, hunting and related service activities", "parent": "A"}
+{"system": "ISIC", "version": "5", "code": "A", "title": "Agriculture, forestry and fishing", "level": 1, "parent_code": null, "is_leaf": false, "is_selectable": true, "source_file": "ISIC_Rev_5_Structure.xlsx"}
+{"system": "ISIC", "version": "5", "code": "01", "title": "Crop and animal production, hunting and related service activities", "level": 2, "parent_code": "A", "is_leaf": false, "is_selectable": true, "source_file": "ISIC_Rev_5_Structure.xlsx"}
+{"system": "ISIC", "version": "5", "code": "011", "title": "Growing of non-perennial crops", "level": 3, "parent_code": "01", "is_leaf": false, "is_selectable": true, "source_file": "ISIC_Rev_5_Structure.xlsx"}
+{"system": "ISIC", "version": "5", "code": "0111", "title": "Growing of cereals (except rice), leguminous crops and oil seeds", "level": 4, "parent_code": "011", "is_leaf": true, "is_selectable": true, "source_file": "ISIC_Rev_5_Structure.xlsx"}

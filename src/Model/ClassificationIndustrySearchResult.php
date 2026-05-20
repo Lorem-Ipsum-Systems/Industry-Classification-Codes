@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LoremIpsum\IndustryClassificationCodes\Models;
+namespace LoremIpsum\IndustryClassificationCodes\Model;
 
 readonly class ClassificationIndustrySearchResult
 {

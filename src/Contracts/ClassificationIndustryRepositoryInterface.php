@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace LoremIpsum\IndustryClassificationCodes\Contracts;
 
-use LoremIpsum\IndustryClassificationCodes\Models\ClassificationIndustryCode;
-use LoremIpsum\IndustryClassificationCodes\Models\ClassificationIndustrySearchResult;
-use LoremIpsum\IndustryClassificationCodes\Models\ClassificationIndustrySystem;
-use LoremIpsum\IndustryClassificationCodes\Models\ClassificationIndustryTranslation;
-use LoremIpsum\IndustryClassificationCodes\Models\ClassificationIndustryVersion;
+use LoremIpsum\IndustryClassificationCodes\Model\ClassificationIndustryCode;
+use LoremIpsum\IndustryClassificationCodes\Model\ClassificationIndustrySearchResult;
+use LoremIpsum\IndustryClassificationCodes\Model\ClassificationIndustrySystem;
+use LoremIpsum\IndustryClassificationCodes\Model\ClassificationIndustryTranslation;
+use LoremIpsum\IndustryClassificationCodes\Model\ClassificationIndustryVersion;
 
 interface ClassificationIndustryRepositoryInterface
 {

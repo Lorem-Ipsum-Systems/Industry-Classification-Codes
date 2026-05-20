@@ -1,2 +1,2 @@
-{"NAICS Code": "111110", "Index Item": "Soybean farming"}
-{"NAICS Code": "111120", "Index Item": "Canola farming"}
+{"system": "NAICS", "version": "2022", "code": "111110", "search_term": "Soybean farming", "source_file": "2022_NAICS_Index_File.xlsx"}
+{"system": "NAICS", "version": "2022", "code": "******", "search_term": "Invalid Item", "source_file": "2022_NAICS_Index_File.xlsx"}
