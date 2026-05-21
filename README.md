@@ -26,6 +26,11 @@ Supports:
 - Require an import or normalization step for consumers.
 - Provide crosswalks or version mappings in v1.
 
+## Requirements
+
+- PHP 8.2 or newer.
+- `ext-mbstring` PHP extension.
+
 ## Installation
 
 ```bash
@@ -65,6 +70,8 @@ use LoremIpsum\IndustryClassificationCodes\Registry\ClassificationIndustryRegist
 // Loads data from the package's default data directory
 $registry = ClassificationIndustryRegistry::fromDefaultData();
 ```
+
+Lookup methods (like `findCode`) return `null` if the record is not found. Collection methods (like `childrenOf` or `search`) return an empty array if no results match.
 
 ### Lookup and Validation
 
@@ -131,6 +138,8 @@ To update the reference data:
 2. Run tests: `composer test`.
 3. Run validation: `composer validate-data`.
 4. Commit changes and publish a new release.
+
+The `validate-data` command is a read-only check to ensure data integrity (e.g., checking for duplicate codes or broken parent relationships).
 
 Package consumers should never need to perform these steps.
 

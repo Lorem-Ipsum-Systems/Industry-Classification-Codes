@@ -39,6 +39,26 @@ final class ShippedClassificationIndustryDataValidator
                 $versionKey = (string)$versionKey;
                 $basePath = rtrim($dataRootPath, '/') . '/' . ltrim($versionData['path'], '/');
 
+                // First pass: collect valid codes from structure files
+                $universe = [];
+                $structureRole = ($systemKey === 'UK_SIC') ? 'classification' : 'structure';
+                $structureFile = $versionData['files'][$structureRole] ?? null;
+
+                if ($structureFile) {
+                    $filePath = $basePath . '/' . $structureFile;
+                    if (file_exists($filePath)) {
+                        try {
+                            foreach ($reader->read($filePath) as $row) {
+                                if (isset($row['code'])) {
+                                    $universe[(string)$row['code']] = true;
+                                }
+                            }
+                        } catch (RuntimeException) {
+                            // Will be caught in the second pass
+                        }
+                    }
+                }
+
                 foreach ($versionData['files'] as $fileRole => $fileName) {
                     $filePath = $basePath . '/' . $fileName;
                     if (!file_exists($filePath)) {
@@ -48,7 +68,7 @@ final class ShippedClassificationIndustryDataValidator
 
                     try {
                         foreach ($reader->read($filePath) as $line => $row) {
-                            $this->validateRow($row, $systemKey, $versionKey, $fileRole, $filePath, $line);
+                            $this->validateRow($row, $systemKey, $versionKey, $fileRole, $filePath, $line, $universe);
                         }
                     } catch (RuntimeException $e) {
                         $this->errors[] = $e->getMessage();
@@ -67,7 +87,7 @@ final class ShippedClassificationIndustryDataValidator
         }
     }
 
-    private function validateRow(array $row, string $expectedSystem, string $expectedVersion, string $fileRole, string $filePath, int $line): void
+    private function validateRow(array $row, string $expectedSystem, string $expectedVersion, string $fileRole, string $filePath, int $line, array $universe): void
     {
         // Basic field checks
         if (!isset($row['system'])) {
@@ -79,11 +99,10 @@ final class ShippedClassificationIndustryDataValidator
         if (!isset($row['version'])) {
             $this->errors[] = sprintf('Missing "version" in %s line %d', $filePath, $line);
         } elseif ((string)$row['version'] !== $expectedVersion) {
-            $this->errors[] = sprintf('Unexpected version "%s" in %s line %d (expected "%s")', $row['version'], $filePath, $line, $expectedVersion);
+            $this->errors[] = sprintf('Unexpected version "%s" in %s line %d (expected "%s")', $row['version'], $filePath, $line, $expectedSystem === 'NACE' ? '2.1' : $expectedVersion);
         }
 
         if ($expectedSystem === 'NAICS' && $fileRole === 'index' && ($row['code'] ?? '') === '******') {
-            // This is skipped by loader, but we can warn if needed. Requirements say skip or warn.
             return;
         }
 
@@ -100,6 +119,21 @@ final class ShippedClassificationIndustryDataValidator
                 $this->errors[] = sprintf('Duplicate canonical code "%s" in %s line %d', $code, $filePath, $line);
             }
             $this->seenCodes[$expectedSystem][$expectedVersion][$code] = true;
+        } else {
+            // Check for unresolved enrichment rows
+            // For ISIC, we need to be careful because codes might be prefixed aliases in explanatory notes
+            $checkCode = $code;
+            if ($expectedSystem === 'ISIC' && $fileRole === 'explanatory_notes') {
+                $checkCode = $this->normalizeIsicCode($code);
+            }
+
+            if (!isset($universe[$checkCode])) {
+                if ($expectedSystem === 'NAICS' && $fileRole === 'index') {
+                    $this->errors[] = sprintf('Unknown NAICS index code "%s" in %s line %d', $code, $filePath, $line);
+                } else {
+                    $this->errors[] = sprintf('Unresolved enrichment row for code "%s" in %s line %d', $code, $filePath, $line);
+                }
+            }
         }
 
         // Translation duplicate detection
@@ -112,6 +146,14 @@ final class ShippedClassificationIndustryDataValidator
         }
     }
 
+    private function normalizeIsicCode(string $code): string
+    {
+        if (preg_match('/^[A-Z](\d+)$/', $code, $matches)) {
+            return $matches[1];
+        }
+        return $code;
+    }
+
     private function validateDataSet(ClassificationIndustryDataSet $dataSet): void
     {
         foreach ($dataSet->codes as $system => $versions) {
@@ -121,6 +163,14 @@ final class ShippedClassificationIndustryDataValidator
                         if (!isset($codes[$model->parentCode])) {
                             $this->errors[] = sprintf('[%s %s] Code %s has non-existent parent %s', $system, $version, $code, $model->parentCode);
                         }
+                    }
+
+                    // Check for duplicate aliases pointing to different codes
+                    foreach ($model->aliases as $alias) {
+                        if (isset($this->seenAliases[$system][$version][$alias]) && $this->seenAliases[$system][$version][$alias] !== $code) {
+                            $this->errors[] = sprintf('[%s %s] Alias %s points to multiple codes: %s and %s', $system, $version, $alias, $this->seenAliases[$system][$version][$alias], $code);
+                        }
+                        $this->seenAliases[$system][$version][$alias] = $code;
                     }
                 }
             }

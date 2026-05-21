@@ -109,9 +109,6 @@ final class Naics2022DataLoader
             $depth = $this->getNaicsDepth($code);
 
             $parentCode = $data['parent_code'];
-            if ($parentCode !== null && !isset($rawCodes[$parentCode])) {
-                $parentCode = null;
-            }
 
             $model = new ClassificationIndustryCode(
                 $system,

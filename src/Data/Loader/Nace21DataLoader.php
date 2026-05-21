@@ -85,9 +85,6 @@ final class Nace21DataLoader
         foreach ($rawCodes as $code => $data) {
             $code = (string)$code;
             $parentCode = $data['parent_code'];
-            if ($parentCode !== null && !isset($rawCodes[$parentCode])) {
-                $parentCode = null;
-            }
 
             $model = new ClassificationIndustryCode(
                 $system,

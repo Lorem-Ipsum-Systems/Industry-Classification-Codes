@@ -81,7 +81,7 @@ final class Isic5DataLoader
                     $notesParentCode = null;
                 }
 
-                if ($record['parent_code'] === null && $notesParentCode !== null) {
+                if ($notesParentCode !== null) {
                     $record['parent_code'] = $notesParentCode;
                 }
 
@@ -119,8 +119,13 @@ final class Isic5DataLoader
             $depth = $this->getIsicDepth($levelName);
 
             $parentCode = $data['parent_code'];
-            if ($parentCode !== null && !isset($rawCodes[$parentCode])) {
-                $parentCode = null;
+
+            // Repair parent fragment (e.g., 011 has parent 0, should be 01)
+            if ($parentCode !== null && !isset($rawCodes[$parentCode]) && strlen($parentCode) < (strlen($normalizedCode) - 1)) {
+                $potentialParent = substr($normalizedCode, 0, strlen($normalizedCode) - 1);
+                if (isset($rawCodes[$potentialParent])) {
+                    $parentCode = $potentialParent;
+                }
             }
 
             $descriptionParts = [];
